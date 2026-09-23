@@ -1,0 +1,45 @@
+# Built-in Kubernetes workload policies.
+rules:
+  - id: K8S_PRIVILEGED_CONTAINER
+    title: Privileged container
+    severity: CRITICAL
+    resource_types: [Deployment, StatefulSet, DaemonSet, ReplicaSet, Job, CronJob, Pod]
+    conditions:
+      - path: privileged_containers
+        operator: present
+    message: "A container runs with securityContext.privileged=true, granting near-host-root access."
+    remediation: "Remove privileged: true and grant only the specific capabilities the workload needs."
+    tags: [privilege, container-hardening]
+
+  - id: K8S_RUN_AS_ROOT
+    title: Container may run as root
+    severity: MEDIUM
+    resource_types: [Deployment, StatefulSet, DaemonSet, ReplicaSet, Job, CronJob, Pod]
+    conditions:
+      - path: root_containers
+        operator: present
+    message: "A container does not set runAsNonRoot=true and may run as UID 0."
+    remediation: "Set securityContext.runAsNonRoot: true and a non-zero runAsUser."
+    tags: [privilege, container-hardening]
+
+  - id: K8S_HOST_NETWORK
+    title: Pod uses host network
+    severity: HIGH
+    resource_types: [Deployment, StatefulSet, DaemonSet, ReplicaSet, Job, CronJob, Pod]
+    conditions:
+      - path: host_network
+        operator: truthy
+    message: "hostNetwork=true shares the node's network namespace, bypassing NetworkPolicies."
+    remediation: "Set hostNetwork: false unless the workload genuinely needs node networking."
+    tags: [network, privilege]
+
+  - id: K8S_HOST_PID
+    title: Pod shares the host PID namespace
+    severity: HIGH
+    resource_types: [Deployment, StatefulSet, DaemonSet, ReplicaSet, Job, CronJob, Pod]
+    conditions:
+      - path: host_pid
+        operator: truthy
+    message: "hostPID=true lets the container see and signal every process on the node."
+    remediation: "Set hostPID: false."
+    tags: [privilege]

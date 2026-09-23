@@ -1,0 +1,27 @@
+# Example of a custom, organisation-specific policy.
+# Point Warden at this directory with:  warden scan ./infra --policy-dir ./policies
+#
+# This shows how a team extends Warden with its own rules — no code, just data.
+rules:
+  - id: ORG_S3_REQUIRE_NAMING
+    title: S3 bucket name must be prefixed with the team slug
+    severity: LOW
+    resource_types: [aws_s3_bucket]
+    conditions:
+      - path: bucket
+        operator: regex
+        value: '^(?!acme-)'   # anything NOT starting with "acme-"
+    message: "Bucket name does not follow the 'acme-<purpose>' naming convention."
+    remediation: "Rename the bucket to start with the 'acme-' prefix."
+    tags: [governance, naming]
+
+  - id: ORG_FORBID_DEFAULT_VPC
+    title: Do not deploy into the default VPC
+    severity: MEDIUM
+    resource_types: [aws_instance]
+    conditions:
+      - path: subnet_id
+        operator: absent
+    message: "No explicit subnet_id set; the instance may land in the default VPC."
+    remediation: "Always place instances in a managed VPC subnet via subnet_id."
+    tags: [governance, network]

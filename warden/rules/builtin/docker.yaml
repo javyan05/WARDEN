@@ -1,0 +1,45 @@
+# Built-in Dockerfile policies.
+rules:
+  - id: DOCKER_RUNS_AS_ROOT
+    title: Container runs as root
+    severity: HIGH
+    resource_types: [dockerfile]
+    conditions:
+      - path: runs_as_root
+        operator: truthy
+    message: "No non-root USER instruction; the container runs as root, widening the blast radius of any RCE."
+    remediation: "Create an unprivileged user and add a USER instruction before the entrypoint."
+    tags: [container-hardening, privilege]
+
+  - id: DOCKER_LATEST_TAG
+    title: Base image uses ':latest' (or no) tag
+    severity: LOW
+    resource_types: [dockerfile]
+    conditions:
+      - path: uses_latest_tag
+        operator: truthy
+    message: "A floating ':latest' tag makes builds non-reproducible and can silently pull vulnerable images."
+    remediation: "Pin the base image to an immutable digest or a specific version tag."
+    tags: [supply-chain, reproducibility]
+
+  - id: DOCKER_ADD_REMOTE_URL
+    title: ADD used with a remote URL
+    severity: MEDIUM
+    resource_types: [dockerfile]
+    conditions:
+      - path: adds_remote_url
+        operator: truthy
+    message: "ADD with a remote URL fetches unverified content into the image at build time."
+    remediation: "Use COPY for local files, or download with checksum verification in a RUN step."
+    tags: [supply-chain]
+
+  - id: DOCKER_APT_NO_CLEANUP
+    title: apt install without cache cleanup
+    severity: INFO
+    resource_types: [dockerfile]
+    conditions:
+      - path: apt_without_cleanup
+        operator: truthy
+    message: "apt-get install without 'rm -rf /var/lib/apt/lists/*' leaves the package cache, bloating the image."
+    remediation: "Append '&& rm -rf /var/lib/apt/lists/*' to the RUN step."
+    tags: [image-size]

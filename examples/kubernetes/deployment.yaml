@@ -1,0 +1,32 @@
+# Intentionally vulnerable Kubernetes manifest for demoing Warden.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-api
+  namespace: prod
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: payment-api
+  template:
+    metadata:
+      labels:
+        app: payment-api
+    spec:
+      hostNetwork: true   # K8S_HOST_NETWORK
+      hostPID: true       # K8S_HOST_PID
+      containers:
+        - name: api
+          image: acme/payment-api:latest
+          securityContext:
+            privileged: true      # K8S_PRIVILEGED_CONTAINER
+            runAsNonRoot: false   # K8S_RUN_AS_ROOT
+          env:
+            # Anti-pattern: a real deployment would hardcode a live key here.
+            # This is a DEFANGED placeholder so the repo does not ship a
+            # provider-format credential that trips secret scanners.
+            - name: STRIPE_API_KEY
+              value: "sk_live_EXAMPLE_not_a_real_key_do_not_use"  # hardcoded secret (fake)
+          ports:
+            - containerPort: 8080

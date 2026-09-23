@@ -1,0 +1,93 @@
+# Built-in AWS Terraform policies.
+# Each rule is data: no Python needed to add or tune a check.
+rules:
+  - id: AWS_S3_PUBLIC_ACL
+    title: S3 bucket is publicly readable/writable
+    severity: HIGH
+    resource_types: [aws_s3_bucket]
+    conditions:
+      - path: acl
+        operator: in
+        value: [public-read, public-read-write]
+    message: "The bucket ACL grants public access; anyone on the internet can read its objects."
+    remediation: "Set acl = \"private\" and use bucket policies or pre-signed URLs for controlled sharing."
+    tags: [public-exposure, data-store]
+
+  - id: AWS_S3_NO_ENCRYPTION
+    title: S3 bucket has no server-side encryption
+    severity: MEDIUM
+    resource_types: [aws_s3_bucket]
+    conditions:
+      - path: server_side_encryption_configuration
+        operator: absent
+    message: "No server_side_encryption_configuration block; objects are stored unencrypted at rest."
+    remediation: "Add a server_side_encryption_configuration block using aws:kms or AES256."
+    tags: [encryption-at-rest, data-store]
+
+  - id: AWS_SG_OPEN_INGRESS
+    title: Security group allows ingress from 0.0.0.0/0
+    severity: HIGH
+    resource_types: [aws_security_group]
+    conditions:
+      - path: ingress.cidr_blocks
+        operator: contains
+        value: 0.0.0.0/0
+    message: "An ingress rule is open to the entire internet (0.0.0.0/0)."
+    remediation: "Restrict cidr_blocks to known networks, or front the resource with a load balancer / bastion."
+    tags: [public-exposure, network]
+
+  - id: AWS_IAM_WILDCARD_ACTION
+    title: IAM policy grants wildcard action on wildcard resource
+    severity: CRITICAL
+    resource_types: [aws_iam_policy, aws_iam_role_policy]
+    conditions:
+      - path: policy
+        operator: regex
+        value: '"Action"\s*:\s*"\*"'
+    message: "The IAM policy allows Action \"*\" — effectively administrator access."
+    remediation: "Scope actions and resources to the minimum the workload needs (least privilege)."
+    tags: [excessive-permissions, iam]
+
+  - id: AWS_RDS_PUBLIC
+    title: RDS instance is publicly accessible
+    severity: HIGH
+    resource_types: [aws_db_instance]
+    conditions:
+      - path: publicly_accessible
+        operator: truthy
+    message: "publicly_accessible = true exposes the database to the public internet."
+    remediation: "Set publicly_accessible = false and place the instance in private subnets."
+    tags: [public-exposure, data-store]
+
+  - id: AWS_RDS_NO_ENCRYPTION
+    title: RDS storage is not encrypted
+    severity: MEDIUM
+    resource_types: [aws_db_instance]
+    conditions:
+      - path: storage_encrypted
+        operator: falsy
+    message: "storage_encrypted is not enabled; database storage is unencrypted at rest."
+    remediation: "Set storage_encrypted = true (and provide a kms_key_id for CMK control)."
+    tags: [encryption-at-rest, data-store]
+
+  - id: AWS_EBS_NO_ENCRYPTION
+    title: EBS volume is not encrypted
+    severity: MEDIUM
+    resource_types: [aws_ebs_volume]
+    conditions:
+      - path: encrypted
+        operator: falsy
+    message: "The EBS volume is not encrypted at rest."
+    remediation: "Set encrypted = true."
+    tags: [encryption-at-rest]
+
+  - id: AWS_CLOUDTRAIL_NO_ENCRYPTION
+    title: CloudTrail is not encrypted with KMS
+    severity: LOW
+    resource_types: [aws_cloudtrail]
+    conditions:
+      - path: kms_key_id
+        operator: absent
+    message: "CloudTrail logs are not encrypted with a KMS key."
+    remediation: "Set kms_key_id to a customer-managed KMS key."
+    tags: [encryption-at-rest, logging]
